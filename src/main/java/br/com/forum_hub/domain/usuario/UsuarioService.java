@@ -113,4 +113,19 @@ public class UsuarioService implements UserDetailsService {
 
         return totpService.gerarQrCode(logado);
     }
+
+    public void ativarA2f(String codigo, Usuario logado) {
+
+        if(logado.isA2fAtiva()){
+            throw new RegraDeNegocioException("Sua autenticação de dois fatores já está ativada!");
+        }
+
+        var codigoValido = totpService.verificarCodigo(codigo, logado);
+        if(!codigoValido){
+            throw new RegraDeNegocioException("Código inválido!");
+        }
+
+        logado.ativarA2f();
+        usuarioRepository.save(logado);
+    }
 }
