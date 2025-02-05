@@ -33,10 +33,15 @@ public class AutenticacaoController {
         var autenticationToken = new UsernamePasswordAuthenticationToken(dados.email(), dados.senha());
         var authentication = authenticationManager.authenticate(autenticationToken);
 
-        String tokenAcesso = tokenService.gerarToken((Usuario) authentication.getPrincipal());
-        String refreshToken = tokenService.gerarRefreshToken((Usuario) authentication.getPrincipal());
+        var usuario = (Usuario) authentication.getPrincipal();
+        if(usuario.isA2fAtiva()){
+            return ResponseEntity.ok(new DadosToken(null, null, true));
+        }
 
-        return ResponseEntity.ok(new DadosToken(tokenAcesso, refreshToken));
+        String tokenAcesso = tokenService.gerarToken(usuario);
+        String refreshToken = tokenService.gerarRefreshToken(usuario);
+
+        return ResponseEntity.ok(new DadosToken(tokenAcesso, refreshToken, false));
     }
 
     @PostMapping("/atualizar-token")
@@ -48,6 +53,6 @@ public class AutenticacaoController {
         String tokenAcesso = tokenService.gerarToken(usuario);
         String tokenAtualizacao = tokenService.gerarRefreshToken(usuario);
 
-        return ResponseEntity.ok(new DadosToken(tokenAcesso, tokenAtualizacao));
+        return ResponseEntity.ok(new DadosToken(tokenAcesso, tokenAtualizacao, false));
     }
 }
