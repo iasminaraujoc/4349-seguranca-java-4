@@ -6,6 +6,7 @@ import br.com.forum_hub.domain.perfil.PerfilRepository;
 import br.com.forum_hub.infra.email.EmailService;
 import br.com.forum_hub.infra.exception.RegraDeNegocioException;
 import br.com.forum_hub.infra.seguranca.HierarquiaService;
+import br.com.forum_hub.infra.seguranca.totp.TotpService;
 import jakarta.transaction.Transactional;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -22,13 +23,15 @@ public class UsuarioService implements UserDetailsService {
     private final EmailService emailService;
     private final PerfilRepository perfilRepository;
     private final HierarquiaService hierarquiaService;
+    private final TotpService totpService;
 
-    public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder, EmailService emailService, PerfilRepository perfilRepository, HierarquiaService hierarquiaService) {
+    public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder, EmailService emailService, PerfilRepository perfilRepository, HierarquiaService hierarquiaService, TotpService totpService) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
         this.perfilRepository = perfilRepository;
         this.hierarquiaService = hierarquiaService;
+        this.totpService = totpService;
     }
 
     @Override
@@ -100,5 +103,14 @@ public class UsuarioService implements UserDetailsService {
     public void reativarUsuario(Long id) {
         var usuario = usuarioRepository.findById(id).orElseThrow();
         usuario.reativar();
+    }
+
+    @Transactional
+    public String gerarQrCode(Usuario logado) {
+        var secret = totpService.gerarSecret();
+        logado.gerarSecret(secret);
+        usuarioRepository.save(logado);
+
+        return totpService.gerarQrCode(logado);
     }
 }

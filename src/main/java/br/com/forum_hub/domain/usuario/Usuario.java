@@ -139,4 +139,11 @@ public class Usuario implements UserDetails {
         this.ativo = true;
     }
 
+    public void gerarSecret(String secret) {
+        this.secret = secret;
+    }
+
+    public String getSecret() {
+        return this.secret;
+    }
 }
