@@ -51,6 +51,17 @@ public class EmailService {
         enviarEmail(usuario.getUsername(), assunto, conteudo);
     }
 
+    public void enviarEmailA2f(Usuario usuario, String codigoString) {
+        String assunto = "Aqui está seu código de verificação";
+        String conteudo = gerarConteudoEmail("Olá [[name]],<br>"
+                + "Seu código de verificação é<br>"
+                + "<h3>[[URL]]</h3><br>"
+                + "Obrigado,<br>"
+                + "Fórum Hub :).", usuario.getNomeCompleto(), codigoString);
+
+        enviarEmail(usuario.getUsername(), assunto, conteudo);
+    }
+
     private String gerarConteudoEmail(String template, String nome, String url) {
         return template.replace("[[name]]", nome).replace("[[URL]]", url);
     }

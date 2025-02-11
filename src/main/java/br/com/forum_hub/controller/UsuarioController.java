@@ -7,6 +7,7 @@ import br.com.forum_hub.domain.usuario.DadosEdicaoUsuario;
 import br.com.forum_hub.domain.usuario.DadosListagemUsuario;
 import br.com.forum_hub.domain.usuario.Usuario;
 import br.com.forum_hub.domain.usuario.UsuarioService;
+import br.com.forum_hub.domain.usuario.a2f.TipoA2f;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -80,14 +81,14 @@ public class UsuarioController {
     }
 
     @PatchMapping("configurar-a2f")
-    public ResponseEntity<String> gerarQrCode(@AuthenticationPrincipal Usuario logado){
-        var url = usuarioService.gerarQrCode(logado);
+    public ResponseEntity<String> gerarQrCode(@AuthenticationPrincipal Usuario logado, @RequestParam TipoA2f tipoA2f){
+        var url = usuarioService.gerarQrCode(logado, tipoA2f);
         return ResponseEntity.ok(url);
     }
 
     @PatchMapping("ativar-a2f")
-    public ResponseEntity<Void> ativarA2f(@RequestParam String codigo, @AuthenticationPrincipal Usuario logado){
-        usuarioService.ativarA2f(codigo, logado);
+    public ResponseEntity<Void> ativarA2f(@RequestParam String codigo, @AuthenticationPrincipal Usuario logado, @RequestParam TipoA2f tipoA2f){
+        usuarioService.ativarA2f(codigo, logado, tipoA2f);
         return ResponseEntity.noContent().build();
     }
 }

@@ -1,7 +1,10 @@
 package br.com.forum_hub.domain.usuario;
 import br.com.forum_hub.domain.perfil.Perfil;
+import br.com.forum_hub.domain.usuario.a2f.TipoA2f;
 import br.com.forum_hub.infra.exception.RegraDeNegocioException;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -37,7 +40,8 @@ public class Usuario implements UserDetails {
     private LocalDateTime expiracaoToken;
     private Boolean ativo;
     private String secret;
-    private Boolean a2fAtiva;
+    @Enumerated(EnumType.ORDINAL)
+    private TipoA2f a2fTipo;
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "usuarios_perfis",
                 joinColumns = @JoinColumn(name = "usuario_id"),
@@ -147,11 +151,11 @@ public class Usuario implements UserDetails {
         return this.secret;
     }
 
-    public boolean isA2fAtiva() {
-        return this.a2fAtiva;
+    public TipoA2f getTipoA2f() {
+        return this.a2fTipo;
     }
 
-    public void ativarA2f() {
-        this.a2fAtiva = true;
+    public void ativarA2f(TipoA2f a2f) {
+        this.a2fTipo = a2f;
     }
 }

@@ -6,6 +6,7 @@ import br.com.forum_hub.domain.autenticacao.github.LoginGithubService;
 import br.com.forum_hub.domain.autenticacao.google.LoginGoogleService;
 import br.com.forum_hub.domain.usuario.Usuario;
 import br.com.forum_hub.domain.usuario.UsuarioRepository;
+import br.com.forum_hub.domain.usuario.a2f.TipoA2f;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -54,6 +55,6 @@ public class LoginGoogleController {
         String tokenAcesso = tokenService.gerarToken((Usuario) authentication.getPrincipal());
         String refreshToken = tokenService.gerarRefreshToken((Usuario) authentication.getPrincipal());
 
-        return ResponseEntity.ok(new DadosToken(tokenAcesso, refreshToken, false));
+        return ResponseEntity.ok(new DadosToken(tokenAcesso, refreshToken, TipoA2f.DESATIVADO));
     }
 }

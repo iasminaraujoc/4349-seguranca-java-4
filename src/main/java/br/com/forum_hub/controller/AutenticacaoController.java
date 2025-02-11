@@ -7,13 +7,14 @@ import br.com.forum_hub.domain.autenticacao.DadosToken;
 import br.com.forum_hub.domain.autenticacao.TokenService;
 import br.com.forum_hub.domain.usuario.Usuario;
 import br.com.forum_hub.domain.usuario.UsuarioRepository;
+import br.com.forum_hub.domain.usuario.UsuarioService;
+import br.com.forum_hub.domain.usuario.a2f.TipoA2f;
 import br.com.forum_hub.infra.seguranca.totp.TotpService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,13 +24,13 @@ public class AutenticacaoController {
 
     private final AuthenticationManager authenticationManager;
     private final TokenService tokenService;
-    private final UsuarioRepository usuarioRepository;
+    private final UsuarioService usuarioService;
     private final TotpService totpService;
 
-    public AutenticacaoController(AuthenticationManager authenticationManager, TokenService tokenService, UsuarioRepository usuarioRepository, TotpService totpService) {
+    public AutenticacaoController(AuthenticationManager authenticationManager, TokenService tokenService, UsuarioService usuarioService, TotpService totpService) {
         this.authenticationManager = authenticationManager;
         this.tokenService = tokenService;
-        this.usuarioRepository = usuarioRepository;
+        this.usuarioService = usuarioService;
         this.totpService = totpService;
     }
 
@@ -39,39 +40,40 @@ public class AutenticacaoController {
         var authentication = authenticationManager.authenticate(autenticationToken);
 
         var usuario = (Usuario) authentication.getPrincipal();
-        if(usuario.isA2fAtiva()){
-            return ResponseEntity.ok(new DadosToken(null, null, true));
+        var tipoA2f = usuario.getTipoA2f();
+        if(tipoA2f != TipoA2f.DESATIVADO){
+            if(tipoA2f == TipoA2f.EMAIL){
+                usuarioService.enviarCodigoEmail(usuario);
+            }
+            return ResponseEntity.ok(new DadosToken(null, null, usuario.getTipoA2f()));
         }
 
         String tokenAcesso = tokenService.gerarToken(usuario);
         String refreshToken = tokenService.gerarRefreshToken(usuario);
 
-        return ResponseEntity.ok(new DadosToken(tokenAcesso, refreshToken, false));
+        return ResponseEntity.ok(new DadosToken(tokenAcesso, refreshToken, TipoA2f.DESATIVADO));
     }
 
     @PostMapping("/verificar-a2f")
     public ResponseEntity<DadosToken> verificarSegundoFator(@Valid @RequestBody DadosA2F dadosA2F){
-        var usuario = usuarioRepository.findByEmailIgnoreCaseAndVerificadoTrueAndAtivoTrue(dadosA2F.email())
-                .orElseThrow();
-        var codigoValido = totpService.verificarCodigo(dadosA2F.codigo(), usuario);
-        if(!codigoValido){
-            throw new BadCredentialsException("Código inválido");
-        }
+        var usuario = (Usuario) usuarioService.loadUserByUsername(dadosA2F.email());
+
+        usuarioService.verificarSegundoFator(usuario, dadosA2F.codigo(), usuario.getTipoA2f());
         String tokenAcesso = tokenService.gerarToken(usuario);
         String refreshToken = tokenService.gerarRefreshToken(usuario);
 
-        return ResponseEntity.ok(new DadosToken(tokenAcesso, refreshToken, false));
+        return ResponseEntity.ok(new DadosToken(tokenAcesso, refreshToken, TipoA2f.DESATIVADO));
     }
 
     @PostMapping("/atualizar-token")
     public ResponseEntity<DadosToken> atualizarToken(@Valid @RequestBody DadosRefreshToken dados){
         var refreshToken = dados.refreshToken();
         Long idUsuario = Long.valueOf(tokenService.verificarToken(refreshToken));
-        var usuario = usuarioRepository.findById(idUsuario).orElseThrow();
+        var usuario = usuarioService.buscarPeloId(idUsuario);
 
         String tokenAcesso = tokenService.gerarToken(usuario);
         String tokenAtualizacao = tokenService.gerarRefreshToken(usuario);
 
-        return ResponseEntity.ok(new DadosToken(tokenAcesso, tokenAtualizacao, false));
+        return ResponseEntity.ok(new DadosToken(tokenAcesso, tokenAtualizacao, TipoA2f.DESATIVADO));
     }
 }

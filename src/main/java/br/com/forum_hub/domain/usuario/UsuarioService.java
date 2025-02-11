@@ -3,6 +3,7 @@ package br.com.forum_hub.domain.usuario;
 import br.com.forum_hub.domain.perfil.DadosPerfil;
 import br.com.forum_hub.domain.perfil.PerfilNome;
 import br.com.forum_hub.domain.perfil.PerfilRepository;
+import br.com.forum_hub.domain.usuario.a2f.TipoA2f;
 import br.com.forum_hub.infra.email.EmailService;
 import br.com.forum_hub.infra.exception.RegraDeNegocioException;
 import br.com.forum_hub.infra.seguranca.HierarquiaService;
@@ -14,6 +15,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.util.UUID;
 
 @Service
 public class UsuarioService implements UserDetailsService {
@@ -106,26 +109,60 @@ public class UsuarioService implements UserDetailsService {
     }
 
     @Transactional
-    public String gerarQrCode(Usuario logado) {
-        var secret = totpService.gerarSecret();
+    public String gerarQrCode(Usuario logado, TipoA2f tipoA2f) {
+        String secret = "";
+        if(tipoA2f == TipoA2f.AUTHENTICATOR){
+            secret = totpService.gerarSecret();
+        }
+        if(tipoA2f == TipoA2f.EMAIL){
+            secret = gerarCodigoEmail(logado);
+        }
         logado.gerarSecret(secret);
         usuarioRepository.save(logado);
 
         return totpService.gerarQrCode(logado);
     }
 
-    public void ativarA2f(String codigo, Usuario logado) {
-
-        if(logado.isA2fAtiva()){
+    public void ativarA2f(String codigo, Usuario logado, TipoA2f tipoA2f) {
+        if(logado.getTipoA2f() != TipoA2f.DESATIVADO){
             throw new RegraDeNegocioException("Sua autenticação de dois fatores já está ativada!");
         }
 
-        var codigoValido = totpService.verificarCodigo(codigo, logado);
-        if(!codigoValido){
-            throw new RegraDeNegocioException("Código inválido!");
+        verificarSegundoFator(logado, codigo, tipoA2f);
+
+        logado.ativarA2f(tipoA2f);
+        usuarioRepository.save(logado);
+    }
+
+    public void verificarSegundoFator(Usuario usuario, String codigo, TipoA2f tipoA2f){
+        boolean codigoValido;
+        if(tipoA2f == TipoA2f.AUTHENTICATOR) {
+            codigoValido = totpService.verificarCodigo(codigo, usuario);
+        } else {
+            codigoValido = usuario.getSecret().equals(codigo);
         }
 
-        logado.ativarA2f();
-        usuarioRepository.save(logado);
+        if (!codigoValido) {
+            throw new RegraDeNegocioException("Código inválido!");
+        }
+    }
+
+    private String gerarCodigoEmail(Usuario usuario){
+        var codigo6Digitos = Math.abs(UUID.randomUUID().hashCode()) % 1_000_000;
+        var codigoString =  String.valueOf(codigo6Digitos);
+
+        emailService.enviarEmailA2f(usuario, codigoString);
+        return codigoString;
+    }
+
+    @Transactional
+    public void enviarCodigoEmail(Usuario usuario){
+        var secret = gerarCodigoEmail(usuario);
+        usuario.gerarSecret(secret);
+        usuarioRepository.save(usuario);
+    }
+
+    public Usuario buscarPeloId(Long idUsuario) {
+        return usuarioRepository.findById(idUsuario).orElseThrow();
     }
 }
